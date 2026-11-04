@@ -139,10 +139,8 @@ struct AlbumDetailMacOS: View {
                     Image(systemName: "chevron.left")
                         .font(.system(size: 14, weight: .semibold))
                 }
-                .buttonStyle(.borderless)
                 .help("Back")
             }
-            .cassetteSharedBackgroundVisibility(.hidden)
         }
 
         ToolbarItem(placement: .primaryAction) {
@@ -154,7 +152,6 @@ struct AlbumDetailMacOS: View {
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(.primary)
                 }
-                .buttonStyle(.borderless)
                 .help("Cancel Download")
             } else {
                 // Same three states as the playlist screen. The album screen used to offer "download"
@@ -167,7 +164,6 @@ struct AlbumDetailMacOS: View {
                             .font(.system(size: 13, weight: .semibold))
                             .foregroundStyle(.primary)
                     }
-                    .buttonStyle(.borderless)
                     .disabled(true)
                     .help("Album Downloaded")
                 case .partial:
@@ -178,7 +174,6 @@ struct AlbumDetailMacOS: View {
                             .font(.system(size: 13, weight: .semibold))
                             .foregroundStyle(.primary)
                     }
-                    .buttonStyle(.borderless)
                     .disabled(vm?.isOffline == true || container?.serverState.isOnline != true)
                     .help("Download Missing Tracks")
                 case .none:
@@ -189,13 +184,11 @@ struct AlbumDetailMacOS: View {
                             .font(.system(size: 13, weight: .semibold))
                             .foregroundStyle(.primary)
                     }
-                    .buttonStyle(.borderless)
                     .disabled(vm?.isOffline == true || container?.serverState.isOnline != true)
                     .help("Download Album")
                 }
             }
         }
-        .cassetteSharedBackgroundVisibility(.hidden)
     }
 }
 #endif

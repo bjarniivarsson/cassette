@@ -333,10 +333,8 @@ struct ArtistDetailMacOS: View {
                     Image(systemName: "chevron.left")
                         .font(.system(size: 14, weight: .semibold))
                 }
-                .buttonStyle(.borderless)
                 .help("Back")
             }
-            .cassetteSharedBackgroundVisibility(.hidden)
         }
     }
 }

@@ -245,7 +245,6 @@ struct PlaylistDetailMacOS: View {
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(.primary)
             }
-            .buttonStyle(.borderless)
             .menuIndicator(.hidden)
             .help("Sort")
         }
@@ -261,16 +260,13 @@ struct PlaylistDetailMacOS: View {
                     Image(systemName: "chevron.left")
                         .font(.system(size: 14, weight: .semibold))
                 }
-                .buttonStyle(.borderless)
                 .help("Back")
             }
-            .cassetteSharedBackgroundVisibility(.hidden)
         }
 
         ToolbarItem(placement: .primaryAction) {
             sortMenu
         }
-        .cassetteSharedBackgroundVisibility(.hidden)
 
         ToolbarItem(placement: .primaryAction) {
             Button {
@@ -280,11 +276,9 @@ struct PlaylistDetailMacOS: View {
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(.primary)
             }
-            .buttonStyle(.borderless)
             .disabled(vm?.isOffline == true || container?.serverState.isOnline != true || vm?.playlistDetail == nil)
             .help("Add Music")
         }
-        .cassetteSharedBackgroundVisibility(.hidden)
 
         ToolbarItem(placement: .primaryAction) {
             Button {
@@ -294,11 +288,9 @@ struct PlaylistDetailMacOS: View {
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(.primary)
             }
-            .buttonStyle(.borderless)
             .disabled(vm?.isOffline == true || container?.serverState.isOnline != true || vm?.playlistDetail == nil)
             .help("Edit Playlist")
         }
-        .cassetteSharedBackgroundVisibility(.hidden)
 
         ToolbarItem(placement: .primaryAction) {
             if vm?.isDownloadingPlaylist == true {
@@ -309,7 +301,6 @@ struct PlaylistDetailMacOS: View {
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(.primary)
                 }
-                .buttonStyle(.borderless)
                 .help("Cancel Download")
             } else if LocalCopyState(songs: vm?.songs ?? []) == .complete {
                 // Downloaded → this button manages the LOCAL copy (free space) — distinct from the trash, which
@@ -321,7 +312,6 @@ struct PlaylistDetailMacOS: View {
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(.primary)
                 }
-                .buttonStyle(.borderless)
                 .help("Remove Download")
             } else if case .partial = LocalCopyState(songs: vm?.songs ?? []) {
                 // Some tracks are here and some are not: the only useful action is to fetch the rest.
@@ -333,7 +323,6 @@ struct PlaylistDetailMacOS: View {
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(.primary)
                 }
-                .buttonStyle(.borderless)
                 .disabled(vm?.isOffline == true || container?.serverState.isOnline != true)
                 .help("Download Missing Tracks")
             } else {
@@ -344,12 +333,10 @@ struct PlaylistDetailMacOS: View {
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(.primary)
                 }
-                .buttonStyle(.borderless)
                 .disabled(vm?.isOffline == true || container?.serverState.isOnline != true)
                 .help("Download Playlist")
             }
         }
-        .cassetteSharedBackgroundVisibility(.hidden)
 
         ToolbarItem(placement: .destructiveAction) {
             Button(role: .destructive) {
@@ -359,10 +346,8 @@ struct PlaylistDetailMacOS: View {
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(.red)
             }
-            .buttonStyle(.borderless)
             .help("Delete Playlist")
         }
-        .cassetteSharedBackgroundVisibility(.hidden)
     }
 }
 
