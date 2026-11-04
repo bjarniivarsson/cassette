@@ -55,6 +55,8 @@ final class AppContainer {
     let replayGainService = ReplayGainService()
     let replayGainSettings = ReplayGainSettings()
     let crossfadeSettings = CrossfadeSettings()
+    let spectrumAnalyzerSettings = SpectrumAnalyzerSettings()
+    let spectrumAnalyzer: SpectrumAnalyzerService
 
     init(inMemory: Bool = false) throws {
         modelContainer = try ModelContainer.cassette(inMemory: inMemory)
@@ -117,6 +119,7 @@ final class AppContainer {
         let player = PlayerService(state: playerState, mediaResolver: resolver, serverService: server, sessionService: sessionService, artworkImageCache: artworkImageCache, libraryService: library, audioStreamCache: cache, downloadService: download, cacheSettings: cacheSettings, replayGainSettings: replayGainSettings, crossfadeSettings: crossfadeSettings, toastService: toastService, statsService: stats, listenBrainzService: lb)
         _player = player
         playerService = player
+        spectrumAnalyzer = SpectrumAnalyzerService(mixerNode: player.mainMixerNode, config: spectrumAnalyzerSettings.config)
 
         let nowPlaying = NowPlayingService(playerService: player, artworkImageCache: artworkImageCache)
         nowPlayingService = nowPlaying

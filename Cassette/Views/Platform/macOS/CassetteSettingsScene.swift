@@ -77,6 +77,7 @@ private struct PlaybackSettingsTab: View {
         Form {
             ReplayGainSettingsSection()
             CrossfadeSettingsSection()
+            SpectrumAnalyzerSettingsSection()
         }
         .formStyle(.grouped)
         .frame(maxWidth: 480)

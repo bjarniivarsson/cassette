@@ -4,6 +4,7 @@
 // See LICENSE file in the project root for full license information.
 
 import Foundation
+import AVFoundation
 import AudioStreaming
 import SwiftSonic
 import OSLog
@@ -19,6 +20,7 @@ nonisolated enum CrossfadePhase: Sendable {
 
 actor PlayerService: PlayerServiceProtocol {
     nonisolated let state: PlayerState
+    nonisolated var mainMixerNode: AVAudioMixerNode { audioPlayer.mainMixerNode }
 
     private let mediaResolver: any MediaResolverProtocol
     private let serverService: any ServerServiceProtocol
