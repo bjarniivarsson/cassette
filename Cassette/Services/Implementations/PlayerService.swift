@@ -32,10 +32,12 @@ actor PlayerService: PlayerServiceProtocol {
     private let cacheSettings: CacheSettings
     private let replayGainSettings: ReplayGainSettings
     private let crossfadeSettings: CrossfadeSettings
+    private let autoEQSettings: AutoEQSettings
     private var crossfadeConfig = CrossfadeConfig(duration: 0, disableForGapless: true)
     private var nowPlayingService: (any NowPlayingServiceProtocol)?
     private var widgetSyncService: WidgetSyncService?
     private var replayGainService: ReplayGainService?
+    private var autoEQService: AutoEQService?
     private let toastService: ToastService
     private let statsService: StatsService
     private let listenBrainzService: ListenBrainzService
@@ -151,6 +153,7 @@ actor PlayerService: PlayerServiceProtocol {
         cacheSettings: CacheSettings,
         replayGainSettings: ReplayGainSettings,
         crossfadeSettings: CrossfadeSettings,
+        autoEQSettings: AutoEQSettings,
         toastService: ToastService,
         statsService: StatsService,
         listenBrainzService: ListenBrainzService
@@ -166,6 +169,7 @@ actor PlayerService: PlayerServiceProtocol {
         self.cacheSettings = cacheSettings
         self.replayGainSettings = replayGainSettings
         self.crossfadeSettings = crossfadeSettings
+        self.autoEQSettings = autoEQSettings
         self.toastService = toastService
         self.statsService = statsService
         self.listenBrainzService = listenBrainzService
@@ -225,6 +229,18 @@ actor PlayerService: PlayerServiceProtocol {
     func setReplayGainService(_ service: ReplayGainService) async {
         replayGainService = service
         await service.attach(to: audioPlayer)
+    }
+
+    func setAutoEQService(_ service: AutoEQService) async {
+        autoEQService = service
+        await service.attach(to: audioPlayer)
+    }
+
+    func autoEQSettingsDidChange() async {
+        let (profileID, enabled) = await MainActor.run {
+            (autoEQSettings.selectedProfileID, autoEQSettings.isEnabled)
+        }
+        await autoEQService?.apply(profileID: profileID, enabled: enabled)
     }
 
     // MARK: - Play

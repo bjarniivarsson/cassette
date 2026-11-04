@@ -66,6 +66,9 @@ protocol PlayerServiceProtocol: AnyObject, Sendable {
     /// Updates the stored CrossfadeConfig snapshot from CrossfadeSettings.
     /// Call whenever the user changes any crossfade setting.
     func crossfadeSettingsDidChange() async
+    /// Re-reads AutoEQSettings and reconfigures the AutoEQ node.
+    /// Call this whenever the user changes the profile selection or enable toggle.
+    func autoEQSettingsDidChange() async
     /// Stops the audio engine synchronously without going through the actor.
     /// Only safe to call during app termination (single-threaded, no concurrent access).
     nonisolated func stopAudioEngineSync()
@@ -73,4 +76,5 @@ protocol PlayerServiceProtocol: AnyObject, Sendable {
 
 extension PlayerServiceProtocol {
     func restoreFromOtherDevice() async -> Bool { false }
+    func autoEQSettingsDidChange() async {}
 }

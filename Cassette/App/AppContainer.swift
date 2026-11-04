@@ -57,6 +57,8 @@ final class AppContainer {
     let crossfadeSettings = CrossfadeSettings()
     let spectrumAnalyzerSettings = SpectrumAnalyzerSettings()
     let spectrumAnalyzer: SpectrumAnalyzerService
+    let autoEQSettings = AutoEQSettings()
+    let autoEQService: AutoEQService
 
     init(inMemory: Bool = false) throws {
         modelContainer = try ModelContainer.cassette(inMemory: inMemory)
@@ -116,7 +118,7 @@ final class AppContainer {
         let lb = ListenBrainzService(client: lbClient, keychain: keychain)
         listenBrainzService = lb
 
-        let player = PlayerService(state: playerState, mediaResolver: resolver, serverService: server, sessionService: sessionService, artworkImageCache: artworkImageCache, libraryService: library, audioStreamCache: cache, downloadService: download, cacheSettings: cacheSettings, replayGainSettings: replayGainSettings, crossfadeSettings: crossfadeSettings, toastService: toastService, statsService: stats, listenBrainzService: lb)
+        let player = PlayerService(state: playerState, mediaResolver: resolver, serverService: server, sessionService: sessionService, artworkImageCache: artworkImageCache, libraryService: library, audioStreamCache: cache, downloadService: download, cacheSettings: cacheSettings, replayGainSettings: replayGainSettings, crossfadeSettings: crossfadeSettings, autoEQSettings: autoEQSettings, toastService: toastService, statsService: stats, listenBrainzService: lb)
         _player = player
         playerService = player
         spectrumAnalyzer = SpectrumAnalyzerService(mixerNode: player.mainMixerNode, config: spectrumAnalyzerSettings.config)
@@ -133,6 +135,8 @@ final class AppContainer {
         guard let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
             fatalError("Documents directory unavailable — cannot initialise AppContainer")
         }
+        let autoEQDir = docs.appendingPathComponent("app.cassette/autoeq", isDirectory: true)
+        autoEQService = AutoEQService(profilesDirectory: autoEQDir)
         let coversDir = docs.appendingPathComponent("app.cassette/coverarts", isDirectory: true)
         let widgetSync = WidgetSyncService(
             dominantColorExtractor: dominantColorExtractor,
@@ -168,6 +172,8 @@ final class AppContainer {
         await _player.setWidgetSyncService(widgetSyncService)
         await _player.setReplayGainService(replayGainService)
         await _player.crossfadeSettingsDidChange()
+        await _player.setAutoEQService(autoEQService)
+        await autoEQService.loadProfiles()
     }
 }
 

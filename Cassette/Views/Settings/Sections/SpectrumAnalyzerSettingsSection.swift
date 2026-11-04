@@ -21,7 +21,7 @@ struct SpectrumAnalyzerSettingsSection: View {
                 }
             )) {
                 Label {
-                    Text("Spectrum Analyser")
+                    Text("Enabled")
                 } icon: {
                     SettingsIcon(systemImage: "waveform.path.ecg", color: .indigo)
                 }

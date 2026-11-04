@@ -26,6 +26,26 @@ Ready for PR once branch 1-navigation is merged.
 
 ---
 
+## Branch: 3-autoeq
+
+### AutoEQ headphone correction (macOS only)
+
+Applies per-headphone frequency correction using profiles from [autoeq.app](https://autoeq.app).
+
+- **Signal chain**: `AutoEQService` attaches a 15-band `AVAudioUnitEQ` node after the ReplayGain node via `player.attach(node:)`
+- **Profile format**: AutoEQ ParametricEQ.txt — `Preamp:` line + `Filter N:` lines; keyword-based parser handles PK/LS/HS/LP/HP/notch and the `BW Oct` bandwidth format
+- **Parser robustness**: keyword scanning (`Fc`, `Gain`, `Q`) instead of fixed token positions; `BW Oct` falls back via `Q = sqrt(2^N) / (2^N - 1)`; `Q → bandwidth` via `2 × asinh(1/(2Q)) / ln(2)` clamped [0.05, 5.0]
+- **Import**: file importer in settings; profile saved as JSON in `~/Documents/app.cassette/autoeq/`
+- **Selection**: profile rows with checkmark; trash button to delete; auto-selects on import
+- **Enable toggle**: bypasses all bands when disabled (profile preserved); profiles and import button hidden when off
+- **Settings**: AutoEQ section in Playback tab above Crossfade, macOS only
+
+### Status
+
+Ready for PR once branch 2-spectrum-analyzer is merged.
+
+---
+
 ## Branch: 1-navigation
 
 ### Back navigation for macOS detail views

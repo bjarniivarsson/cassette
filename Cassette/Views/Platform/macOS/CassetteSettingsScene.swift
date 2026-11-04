@@ -76,6 +76,7 @@ private struct PlaybackSettingsTab: View {
     var body: some View {
         Form {
             ReplayGainSettingsSection()
+            AutoEQSettingsSection()
             CrossfadeSettingsSection()
             SpectrumAnalyzerSettingsSection()
         }
