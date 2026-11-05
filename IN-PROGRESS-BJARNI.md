@@ -66,17 +66,29 @@ AutoEQ can now be scoped to a specific output device instead of always being act
 Adds an "Audio Path" popover accessible from `AudioFormatBadge` in the macOS full-screen player. Shows the full signal chain as a vertical stack of stage cards.
 
 - **Stages** (in order): Source → [Transcode?] → Stream/Downloaded → Conversion (PCM→Float32, with channel downmix annotation) → [ReplayGain?] → [AutoEQ?] → [Crossfade?] → [Output Conversion?] → Output
-- **Conditional stages**: Transcode (OpenSubsonic `transcodedSuffix`), ReplayGain (when enabled), AutoEQ (only when effectively active on current device), Crossfade (hidden when suppressed for gapless album pairs), Output Conversion (only when device format differs from internal Float32/stereo)
-- **Output Conversion**: shows only the values that differ (e.g. just sample rate if only that changes)
-- **Physical DAC format**: reads `kAudioStreamPropertyPhysicalFormat` on the first output stream (not the virtual Float32 from `kAudioDevicePropertyStreamFormat`)
-- **Server type**: `Stream` tile shows server type ("Navidrome") via `client.loadCapabilities()`, not cached `serverCapabilities` which may be nil
-- **AutoEQ stage**: subtitle = profile name, detail = preamp dB + active filter count
+- **Conditional stages**: Transcode (OpenSubsonic `transcodedSuffix`), ReplayGain (when enabled and gain ≠ 0), AutoEQ (only when effectively active on current device), Crossfade (hidden when suppressed for gapless album pairs), Output Conversion (only when device format differs from internal Float32/stereo)
+- **Output Conversion**: shows only the values that differ (e.g. just sample rate if only that changes); uses `function` icon for both conversion cards
+- **Physical DAC format**: three-step resolution — integer PCM physical format → `kAudioStreamPropertyAvailablePhysicalFormats` for best integer depth at any rate → `kAudioDevicePropertyTransportType` to classify OS-managed devices (built-in/Bluetooth/AirPlay/Virtual) and show "32-bit Float (OS)" as honest fallback
+- **ReplayGain stage**: shows raw gain, pre-amp (if non-zero), and total separately: "Gain · +3.0dB (Track) · +1.0dB (Pre-Amp) · Total · +4.0dB"
+- **Stream stage**: format "Navidrome → Cassette" via `client.loadCapabilities()`
+- **Source quality label**: "Hi-Res Lossless" (lossless codec + ≥24-bit + ≥96 kHz) or "Lossless" shown as subtitle
+- **Channel labels**: `channelLabel(_:)` helper maps 1→Mono, 2→Stereo, 4→Quad, 5→5.0 Surround, 6→5.1, 7→6.1, 8→7.1
+- **Crossfade flash fix**: derives both current and next track from the same `playerState` snapshot to avoid a momentary state mismatch when skipping tracks with "disable for gapless" enabled
+
+#### Spectrum analyzer improvements
+
+- **Visualizer types**: `LinesSpectrumAnalyzerView` (curved filled area) and `BarsSpectrumAnalyzerView` (bottom-anchored bars with rounded caps), each in their own file
+- **Type setting**: "Type" picker (Lines / Bars) added above "Theme" in Spectrum Analyser settings; persisted to `cassette.spectrum.visualizerType`
+- **FFT size**: 4096-point (from 2048); `hi` bin boundary is now dynamic — derived as `nyquistBins × (930/1024)` so it correctly covers ~20 kHz at any FFT size or sample rate
+- **Pause decay**: a 30 fps `Timer` inside `SpectrumAnalyzerService` applies exponential decay (factor 0.88 per tick, ~1.1 s to near-zero) whenever no tap has published in the last 50 ms — bars/lines fall smoothly to zero on pause instead of freezing
+- **Always visible**: visualizer shown whenever enabled, not gated on playback state; height 110 pt
+- **Baseline clipping**: both views use `height + 1` as the reference height so zero-magnitude bins are pushed 1 pt below the frame and fully clipped
 
 #### OutputDeviceState
 
 New `@Observable @MainActor` class centralising Core Audio output device monitoring, shared between `AudioPathView` and `AutoEQSettingsSection`.
 
-- Tracks: device name, UID, sample rate, bit depth, float/PCM flag, channel count, available output devices list
+- Tracks: device name, UID, sample rate, bit depth, float/PCM flag, `isOSManaged` flag, channel count, available output devices list
 - Registered as `AppContainer.outputDeviceState` (macOS only)
 - Uses `AudioObjectAddPropertyListenerBlock` on `kAudioHardwarePropertyDefaultOutputDevice`
 

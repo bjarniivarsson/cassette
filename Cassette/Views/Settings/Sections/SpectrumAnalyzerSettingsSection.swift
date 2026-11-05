@@ -30,6 +30,24 @@ struct SpectrumAnalyzerSettingsSection: View {
             if settings?.isEnabled == true {
                 Picker(
                     selection: Binding(
+                        get: { settings?.visualizerType ?? .lines },
+                        set: { settings?.visualizerType = $0 }
+                    )
+                ) {
+                    ForEach(SpectrumVisualizerType.allCases) { type in
+                        Text(type.label).tag(type)
+                    }
+                } label: {
+                    Label {
+                        Text("Type")
+                    } icon: {
+                        SettingsIcon(systemImage: "chart.xyaxis.line", color: .indigo)
+                    }
+                }
+                .pickerStyle(.menu)
+
+                Picker(
+                    selection: Binding(
                         get: { settings?.themeOption ?? .white },
                         set: { newValue in
                             settings?.themeOption = newValue

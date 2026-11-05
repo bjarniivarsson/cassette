@@ -20,8 +20,8 @@ final class SpectrumAnalyzerService {
 
     // MARK: - Fixed constants
 
-    private static let fftN       = 2048
-    private static let log2n      = vDSP_Length(11) // log2(2048)
+    private static let fftN       = 4096
+    private static let log2n      = vDSP_Length(12) // log2(4096)
     private static let maxChannels = 2
     private static let maxBinCount = 40
 
@@ -33,6 +33,9 @@ final class SpectrumAnalyzerService {
 
     private let mixerNode: AVAudioMixerNode
     private var isRunning = false
+    private var decayTimer: Timer?
+    // Exponential decay factor applied per 33 ms tick when the tap is idle (~1.1 s to near-zero).
+    private static let decayFactor: Float = 0.88
 
     // FFT scratch buffers — pre-allocated for the maximum FFT size; accessed only from the
     // single tap-callback thread.
@@ -85,9 +88,11 @@ final class SpectrumAnalyzerService {
 
         // Precompute log-spaced bin config for every supported bin count so we never recompute
         // at runtime when the user changes the setting.
-        // lo/hi are FFT bin indices: bin 1 ≈ 21 Hz, bin 930 ≈ 20 kHz (at 44100 Hz / 2048 samples).
+        // lo/hi are FFT bin indices spanning ~21 Hz – 20 kHz.
+        // hi is derived as 930/1024 of nyquistBins — the fraction that mapped to 20 kHz
+        // at 44.1 kHz with a 2048-point FFT — so it scales correctly with any FFT size.
         let nyquistBins = n / 2
-        let lo = Double(1), hi = Double(930)
+        let lo = Double(1), hi = Double(nyquistBins) * (930.0 / 1024.0)
         allBinConfig = Dictionary(uniqueKeysWithValues: SpectrumBinDetail.allCases.map { detail in
             let count = detail.rawValue
             let boundaries = (0...count).map { i in
@@ -114,16 +119,31 @@ final class SpectrumAnalyzerService {
         mixerNode.installTap(onBus: 0, bufferSize: UInt32(Self.fftN), format: nil) { [weak self] buffer, _ in
             self?.processTap(buffer: buffer)
         }
+        let timer = Timer(timeInterval: 1.0 / 30.0, repeats: true) { [weak self] _ in
+            Task { @MainActor [weak self] in self?.tickDecay() }
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        decayTimer = timer
     }
 
     func stop() {
         guard isRunning else { return }
         isRunning = false
         mixerNode.removeTap(onBus: 0)
+        decayTimer?.invalidate()
+        decayTimer = nil
         Task { @MainActor [weak self] in
             guard let self else { return }
             self.channels = self.channels.map { _ in Array(repeating: 0, count: Self.maxBinCount) }
         }
+    }
+
+    @MainActor private func tickDecay() {
+        // lastPublishTime is nonisolated(unsafe) — benign race, same pattern as config.
+        // If no tap has published in the last 50 ms, the engine is paused; decay toward zero.
+        guard CACurrentMediaTime() - lastPublishTime > 0.05 else { return }
+        let f = Self.decayFactor
+        channels = channels.map { ch in ch.map { $0 * f } }
     }
 
     /// Push updated user settings into the service. Called from the main actor when any setting changes.

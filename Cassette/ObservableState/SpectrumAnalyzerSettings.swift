@@ -14,6 +14,21 @@ struct SpectrumTheme: Sendable, Equatable {
     let rightColor: Color
 }
 
+/// Which visualizer style to render in the full-screen player.
+enum SpectrumVisualizerType: String, CaseIterable, Identifiable, Sendable {
+    case lines = "lines"
+    case bars  = "bars"
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .lines: "Lines"
+        case .bars:  "Bars"
+        }
+    }
+}
+
 /// Named, predefined spectrum analyzer themes.
 enum SpectrumThemeOption: String, CaseIterable, Identifiable, Sendable {
     case white  = "white"
@@ -80,6 +95,7 @@ final class SpectrumAnalyzerSettings {
     // MARK: - Storage (observation ignored)
 
     @ObservationIgnored private var _isEnabled: Bool
+    @ObservationIgnored private var _visualizerType: SpectrumVisualizerType
     @ObservationIgnored private var _binDetail: SpectrumBinDetail
     @ObservationIgnored private var _sensitivity: Double   // the actual dB floor value (-40 to -80)
     @ObservationIgnored private var _responsiveness: Double  // attack coefficient (0.3 to 1.0)
@@ -96,6 +112,17 @@ final class SpectrumAnalyzerSettings {
         set {
             withMutation(keyPath: \.isEnabled) { _isEnabled = newValue }
             UserDefaults.standard.set(newValue, forKey: Self.isEnabledKey)
+        }
+    }
+
+    var visualizerType: SpectrumVisualizerType {
+        get {
+            access(keyPath: \.visualizerType)
+            return _visualizerType
+        }
+        set {
+            withMutation(keyPath: \.visualizerType) { _visualizerType = newValue }
+            UserDefaults.standard.set(newValue.rawValue, forKey: Self.visualizerTypeKey)
         }
     }
 
@@ -161,6 +188,7 @@ final class SpectrumAnalyzerSettings {
     // MARK: - Defaults, bounds & keys
 
     static let defaultIsEnabled: Bool = true
+    static let defaultVisualizerType: SpectrumVisualizerType = .lines
     static let defaultBinDetail: SpectrumBinDetail = .medium
     static let defaultSensitivity: Double = -60
     static let defaultResponsiveness: Double = 0.8
@@ -175,6 +203,7 @@ final class SpectrumAnalyzerSettings {
     static let maxResponsiveness: Double = 1.0
 
     private static let isEnabledKey       = "cassette.spectrum.isEnabled"
+    private static let visualizerTypeKey  = "cassette.spectrum.visualizerType"
     private static let binDetailKey       = "cassette.spectrum.binDetail"
     private static let sensitivityKey     = "cassette.spectrum.sensitivity"
     private static let responsivenessKey  = "cassette.spectrum.responsiveness"
@@ -202,6 +231,9 @@ final class SpectrumAnalyzerSettings {
         } else {
             _isEnabled = Self.defaultIsEnabled
         }
+
+        let typeRaw = UserDefaults.standard.string(forKey: Self.visualizerTypeKey) ?? ""
+        _visualizerType = SpectrumVisualizerType(rawValue: typeRaw) ?? Self.defaultVisualizerType
 
         let binRaw = UserDefaults.standard.integer(forKey: Self.binDetailKey)
         _binDetail = SpectrumBinDetail(rawValue: binRaw) ?? Self.defaultBinDetail

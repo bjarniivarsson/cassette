@@ -17,6 +17,7 @@ final class OutputDeviceState {
     var currentSampleRate: Double?
     var currentBitDepth: UInt32?
     var currentIsFloat: Bool = false
+    var currentIsOSManaged: Bool = false
     var currentChannels: UInt32?
 
     /// Available output devices as (name, uid) pairs for the device picker.
@@ -35,7 +36,7 @@ final class OutputDeviceState {
     }
 
     deinit {
-        guard listenerAdded, var block = listenerBlock else { return }
+        guard listenerAdded, let block = listenerBlock else { return }
         var addr = AudioObjectPropertyAddress(
             mSelector: kAudioHardwarePropertyDefaultOutputDevice,
             mScope: kAudioObjectPropertyScopeGlobal,
@@ -54,6 +55,7 @@ final class OutputDeviceState {
             currentSampleRate = nil
             currentBitDepth = nil
             currentIsFloat = false
+            currentIsOSManaged = false
             currentChannels = nil
             return
         }
@@ -159,9 +161,70 @@ final class OutputDeviceState {
         guard AudioObjectGetPropertyData(firstStream, &physAddr, 0, nil, &size, &format) == noErr else { return }
 
         currentSampleRate = format.mSampleRate > 0 ? format.mSampleRate : nil
-        currentBitDepth   = format.mBitsPerChannel > 0 ? format.mBitsPerChannel : nil
-        currentIsFloat    = (format.mFormatFlags & kAudioFormatFlagIsFloat) != 0
         currentChannels   = format.mChannelsPerFrame > 0 ? format.mChannelsPerFrame : nil
+
+        let reportedIsFloat = (format.mFormatFlags & kAudioFormatFlagIsFloat) != 0
+        if !reportedIsFloat {
+            // Physical format is integer PCM — the driver exposes the real DAC format.
+            currentBitDepth    = format.mBitsPerChannel > 0 ? format.mBitsPerChannel : nil
+            currentIsFloat     = false
+            currentIsOSManaged = false
+        } else {
+            // Physical format is Float32 (HAL hand-off). Check all advertised formats
+            // (any sample rate) for integer PCM entries that reveal the actual depth.
+            if let best = bestAvailableIntegerFormat(for: firstStream) {
+                currentBitDepth    = best.mBitsPerChannel > 0 ? best.mBitsPerChannel : nil
+                currentIsFloat     = false
+                currentIsOSManaged = false
+            } else {
+                // No integer alternative found. For built-in / Bluetooth / AirPlay /
+                // virtual devices the Float32 is an OS abstraction, not the DAC spec.
+                let transport = transportType(for: deviceID)
+                let osManaged = transport == kAudioDeviceTransportTypeBuiltIn
+                    || transport == kAudioDeviceTransportTypeBluetooth
+                    || transport == kAudioDeviceTransportTypeBluetoothLE
+                    || transport == kAudioDeviceTransportTypeAirPlay
+                    || transport == kAudioDeviceTransportTypeVirtual
+                currentBitDepth    = osManaged ? nil : (format.mBitsPerChannel > 0 ? format.mBitsPerChannel : nil)
+                currentIsFloat     = !osManaged
+                currentIsOSManaged = osManaged
+            }
+        }
+    }
+
+    // Returns the highest-bit-depth integer PCM format the stream advertises, at any sample rate.
+    private func bestAvailableIntegerFormat(for streamID: AudioStreamID) -> AudioStreamBasicDescription? {
+        var addr = AudioObjectPropertyAddress(
+            mSelector: kAudioStreamPropertyAvailablePhysicalFormats,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        var size: UInt32 = 0
+        guard AudioObjectGetPropertyDataSize(streamID, &addr, 0, nil, &size) == noErr, size > 0 else { return nil }
+
+        let count = Int(size) / MemoryLayout<AudioStreamRangedDescription>.size
+        var ranged = [AudioStreamRangedDescription](repeating: AudioStreamRangedDescription(), count: count)
+        guard AudioObjectGetPropertyData(streamID, &addr, 0, nil, &size, &ranged) == noErr else { return nil }
+
+        return ranged
+            .filter { r in
+                r.mFormat.mFormatID == kAudioFormatLinearPCM
+                    && (r.mFormat.mFormatFlags & kAudioFormatFlagIsFloat) == 0
+            }
+            .max(by: { $0.mFormat.mBitsPerChannel < $1.mFormat.mBitsPerChannel })
+            .map(\.mFormat)
+    }
+
+    private func transportType(for deviceID: AudioDeviceID) -> UInt32 {
+        var type: UInt32 = 0
+        var size = UInt32(MemoryLayout<UInt32>.size)
+        var addr = AudioObjectPropertyAddress(
+            mSelector: kAudioDevicePropertyTransportType,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        AudioObjectGetPropertyData(deviceID, &addr, 0, nil, &size, &type)
+        return type
     }
 
     private func allOutputDevices() -> [(name: String, uid: String)] {
