@@ -46,6 +46,46 @@ Ready for PR once branch 2-spectrum-analyzer is merged.
 
 ---
 
+## Branch: 4-conditional-autoeq-plus-audio-path
+
+### Device-conditional AutoEQ + Audio Path visualization (macOS only)
+
+Two related features built on shared output-device monitoring infrastructure.
+
+#### Device-conditional AutoEQ
+
+AutoEQ can now be scoped to a specific output device instead of always being active.
+
+- **New toggle** in AutoEQ settings: "Only for this device" — when enabled, a device picker appears listing all current system output devices
+- **Device picker** shows all output devices (devices with at least one output stream); selecting one stores its Core Audio UID (stable across reboots) in `AutoEQSettings.targetDeviceUID`
+- **Effective state**: `AutoEQSettings.isEffectivelyEnabled(currentDeviceUID:)` computes whether AutoEQ should be active given the current device
+- **Player integration**: `PlayerService.autoEQSettingsDidChange(currentDeviceUID:)` accepts the current device UID and applies effective state; `AppContainer` wires `OutputDeviceState.onDeviceChange` to call this whenever the user switches devices
+
+#### Audio Path visualization
+
+Adds an "Audio Path" popover accessible from `AudioFormatBadge` in the macOS full-screen player. Shows the full signal chain as a vertical stack of stage cards.
+
+- **Stages** (in order): Source → [Transcode?] → Stream/Downloaded → Conversion (PCM→Float32, with channel downmix annotation) → [ReplayGain?] → [AutoEQ?] → [Crossfade?] → [Output Conversion?] → Output
+- **Conditional stages**: Transcode (OpenSubsonic `transcodedSuffix`), ReplayGain (when enabled), AutoEQ (only when effectively active on current device), Crossfade (hidden when suppressed for gapless album pairs), Output Conversion (only when device format differs from internal Float32/stereo)
+- **Output Conversion**: shows only the values that differ (e.g. just sample rate if only that changes)
+- **Physical DAC format**: reads `kAudioStreamPropertyPhysicalFormat` on the first output stream (not the virtual Float32 from `kAudioDevicePropertyStreamFormat`)
+- **Server type**: `Stream` tile shows server type ("Navidrome") via `client.loadCapabilities()`, not cached `serverCapabilities` which may be nil
+- **AutoEQ stage**: subtitle = profile name, detail = preamp dB + active filter count
+
+#### OutputDeviceState
+
+New `@Observable @MainActor` class centralising Core Audio output device monitoring, shared between `AudioPathView` and `AutoEQSettingsSection`.
+
+- Tracks: device name, UID, sample rate, bit depth, float/PCM flag, channel count, available output devices list
+- Registered as `AppContainer.outputDeviceState` (macOS only)
+- Uses `AudioObjectAddPropertyListenerBlock` on `kAudioHardwarePropertyDefaultOutputDevice`
+
+### Status
+
+Ready for PR once branch 3-autoeq is merged.
+
+---
+
 ## Branch: 1-navigation
 
 ### Back navigation for macOS detail views

@@ -35,6 +35,7 @@ struct FullPlayerExpandedView: View {
     @State private var draggedQueueIndex: Int?
     @State private var dropTargetGap: Int?
     @AppStorage("cassette.lastVolume") private var localVolume: Double = 0.7
+    @State private var showPipeline = false
 
     private var playerState: PlayerState? { container?.playerState }
     private var currentTrack: DisplayableSong? { playerState?.currentTrack }
@@ -433,13 +434,25 @@ struct FullPlayerExpandedView: View {
                 .lineLimit(1)
 
                 if let format = currentTrack?.audioFormat {
-                    HStack(spacing: 6) {
-                        AudioFormatBadge(format: format, color: .white.opacity(0.7))
-                        Text(format)
-                            .font(.system(size: 11, design: .monospaced))
-                            .foregroundStyle(.white.opacity(0.7))
+                    Button {
+                        showPipeline.toggle()
+                    } label: {
+                        HStack(spacing: 6) {
+                            AudioFormatBadge(format: format, color: .white.opacity(0.7))
+                            Text(format)
+                                .font(.system(size: 11, design: .monospaced))
+                                .foregroundStyle(.white.opacity(0.7))
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 9, weight: .medium))
+                                .foregroundStyle(.white.opacity(0.35))
+                        }
+                        .padding(.top, 2)
+                        .contentShape(Rectangle())
                     }
-                    .padding(.top, 2)
+                    .buttonStyle(.plain)
+                    .popover(isPresented: $showPipeline, arrowEdge: .trailing) {
+                        AudioPathView(track: currentTrack)
+                    }
                 }
             }
 

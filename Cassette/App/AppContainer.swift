@@ -59,6 +59,9 @@ final class AppContainer {
     let spectrumAnalyzer: SpectrumAnalyzerService
     let autoEQSettings = AutoEQSettings()
     let autoEQService: AutoEQService
+    #if os(macOS)
+    let outputDeviceState = OutputDeviceState()
+    #endif
 
     init(inMemory: Bool = false) throws {
         modelContainer = try ModelContainer.cassette(inMemory: inMemory)
@@ -174,6 +177,13 @@ final class AppContainer {
         await _player.crossfadeSettingsDidChange()
         await _player.setAutoEQService(autoEQService)
         await autoEQService.loadProfiles()
+        #if os(macOS)
+        outputDeviceState.onDeviceChange = { [weak self] in
+            guard let self else { return }
+            let uid = self.outputDeviceState.currentDeviceUID
+            Task { await self._player.autoEQSettingsDidChange(currentDeviceUID: uid) }
+        }
+        #endif
     }
 }
 

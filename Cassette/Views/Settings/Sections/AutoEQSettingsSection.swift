@@ -14,6 +14,7 @@ struct AutoEQSettingsSection: View {
     @State private var profiles: [AutoEQProfile] = []
 
     private var settings: AutoEQSettings? { container?.autoEQSettings }
+    private var outputDeviceState: OutputDeviceState? { container?.outputDeviceState }
 
     var body: some View {
         Section {
@@ -49,6 +50,8 @@ struct AutoEQSettingsSection: View {
                     }
 
                     importButton
+
+                    deviceSpecificSection
                 }
             }
 
@@ -155,8 +158,38 @@ struct AutoEQSettingsSection: View {
         }
     }
 
+    @ViewBuilder private var deviceSpecificSection: some View {
+        let devices = outputDeviceState?.availableOutputDevices ?? []
+        Toggle(isOn: Binding(
+            get: { settings?.deviceSpecificEnabled ?? false },
+            set: { newValue in
+                settings?.deviceSpecificEnabled = newValue
+                applyChange()
+            }
+        )) {
+            Label("Only for this device", systemImage: "hifispeaker")
+        }
+
+        if settings?.deviceSpecificEnabled == true {
+            Picker("Output device", selection: Binding(
+                get: { settings?.targetDeviceUID ?? "" },
+                set: { uid in
+                    settings?.targetDeviceUID = uid.isEmpty ? nil : uid
+                    settings?.targetDeviceName = devices.first(where: { $0.uid == uid })?.name
+                    applyChange()
+                }
+            )) {
+                Text("Select a device…").tag("")
+                ForEach(devices, id: \.uid) { device in
+                    Text(device.name).tag(device.uid)
+                }
+            }
+        }
+    }
+
     private func applyChange() {
-        Task { await container?.playerService.autoEQSettingsDidChange() }
+        let uid = outputDeviceState?.currentDeviceUID
+        Task { await container?.playerService.autoEQSettingsDidChange(currentDeviceUID: uid) }
     }
 
     private func refreshProfiles() async {

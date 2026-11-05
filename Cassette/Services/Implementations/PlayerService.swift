@@ -236,11 +236,12 @@ actor PlayerService: PlayerServiceProtocol {
         await service.attach(to: audioPlayer)
     }
 
-    func autoEQSettingsDidChange() async {
-        let (profileID, enabled) = await MainActor.run {
-            (autoEQSettings.selectedProfileID, autoEQSettings.isEnabled)
+    func autoEQSettingsDidChange(currentDeviceUID: String? = nil) async {
+        let (profileID, effectiveEnabled) = await MainActor.run {
+            (autoEQSettings.selectedProfileID,
+             autoEQSettings.isEffectivelyEnabled(currentDeviceUID: currentDeviceUID))
         }
-        await autoEQService?.apply(profileID: profileID, enabled: enabled)
+        await autoEQService?.apply(profileID: profileID, enabled: effectiveEnabled)
     }
 
     // MARK: - Play

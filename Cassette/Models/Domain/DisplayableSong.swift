@@ -24,6 +24,16 @@ nonisolated struct DisplayableSong: Identifiable, Hashable, Sendable, Codable {
     var isDownloaded: Bool
     let coverArtId: String?
     let audioFormat: String?
+    /// Transcoded format suffix when the server converts to a different format before streaming (e.g. "mp3").
+    let transcodedFormat: String?
+    /// Bitrate in kbps (from server metadata; nil for downloaded tracks).
+    let bitRate: Int?
+    /// Bit depth in bits, e.g. 16 or 24 (OpenSubsonic; nil when unavailable).
+    let bitDepth: Int?
+    /// Sampling rate in Hz, e.g. 44100 or 96000 (OpenSubsonic; nil when unavailable).
+    let samplingRate: Int?
+    /// Number of audio channels (OpenSubsonic; nil when unavailable).
+    let channelCount: Int?
     let replayGainTrackGain: Double?
     let replayGainTrackPeak: Double?
     let replayGainAlbumGain: Double?
@@ -48,6 +58,11 @@ extension DisplayableSong {
         self.isDownloaded = isDownloaded
         self.coverArtId = song.coverArt
         self.audioFormat = song.suffix?.uppercased()
+        self.transcodedFormat = song.transcodedSuffix?.uppercased()
+        self.bitRate = song.bitRate
+        self.bitDepth = song.bitDepth
+        self.samplingRate = song.samplingRate
+        self.channelCount = song.channelCount
         self.replayGainTrackGain = song.replayGain?.trackGain
         self.replayGainTrackPeak = song.replayGain?.trackPeak
         self.replayGainAlbumGain = song.replayGain?.albumGain
@@ -70,6 +85,11 @@ extension DisplayableSong {
         self.isDownloaded = true
         self.coverArtId = track.coverArtId
         self.audioFormat = track.suffix?.uppercased()
+        self.transcodedFormat = nil
+        self.bitRate = nil
+        self.bitDepth = nil
+        self.samplingRate = nil
+        self.channelCount = nil
         self.replayGainTrackGain = track.replayGainTrackGain
         self.replayGainTrackPeak = track.replayGainTrackPeak
         self.replayGainAlbumGain = track.replayGainAlbumGain
