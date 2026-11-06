@@ -7,8 +7,8 @@
 import SwiftUI
 
 struct LinesSpectrumAnalyzerView: View {
-    let channels: [[Float]]
-    let theme: SpectrumTheme
+    @Environment(\.appContainer) private var container
+    private var channels: [[Float]] { container?.spectrumAnalyzer.channels ?? [] }
 
     // Opacity pair (fill, stroke) per channel index — channel 1 is slightly more transparent
     // so the two curves are readable when stacked.
@@ -24,7 +24,7 @@ struct LinesSpectrumAnalyzerView: View {
                 let magnitudes = channels[index]
                 let displayCount = magnitudes.count
                 let padded = AnimatableMagnitudes(magnitudes)
-                let color = index == 0 ? theme.leftColor : theme.rightColor
+                let color = Color.white
                 ZStack {
                     SpectrumCurve(magnitudes: padded, displayCount: displayCount, closed: true)
                         .fill(

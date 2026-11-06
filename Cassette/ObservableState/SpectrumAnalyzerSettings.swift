@@ -7,46 +7,48 @@ import Foundation
 import Observation
 import SwiftUI
 
-/// Per-channel color pair for the spectrum analyzer curve.
-/// Left/right colors control the stroke and (at reduced opacity) the gradient fill.
-struct SpectrumTheme: Sendable, Equatable {
-    let leftColor: Color
-    let rightColor: Color
-}
-
 /// Which visualizer style to render in the full-screen player.
 enum SpectrumVisualizerType: String, CaseIterable, Identifiable, Sendable {
-    case lines = "lines"
-    case bars  = "bars"
+    case lines       = "lines"
+    case bars        = "bars"
+    case spectrogram = "spectrogram"
 
     var id: String { rawValue }
 
     var label: String {
         switch self {
-        case .lines: "Lines"
-        case .bars:  "Bars"
+        case .lines:       "Lines"
+        case .bars:        "Bars"
+        case .spectrogram: "Spectrogram"
         }
     }
 }
 
-/// Named, predefined spectrum analyzer themes.
-enum SpectrumThemeOption: String, CaseIterable, Identifiable, Sendable {
-    case white  = "white"
-    case blueRed = "blueRed"
+/// FFT window size controlling the frequency-vs-time resolution tradeoff.
+/// Larger → finer frequency bins, more latency; smaller → coarser bins, more responsive.
+enum SpectrumFFTSize: Int, CaseIterable, Identifiable, Sendable {
+    case n1024 = 1024
+    case n2048 = 2048
+    case n4096 = 4096
+    case n8192 = 8192
 
-    var id: String { rawValue }
+    var id: Int { rawValue }
 
     var label: String {
         switch self {
-        case .white:   "White"
-        case .blueRed: "Blue / Red"
+        case .n1024: "1024"
+        case .n2048: "2048"
+        case .n4096: "4096"
+        case .n8192: "8192"
         }
     }
 
-    var theme: SpectrumTheme {
+    var log2n: Int {
         switch self {
-        case .white:   SpectrumTheme(leftColor: .white, rightColor: .white)
-        case .blueRed: SpectrumTheme(leftColor: .blue, rightColor: .red)
+        case .n1024: 10
+        case .n2048: 11
+        case .n4096: 12
+        case .n8192: 13
         }
     }
 }
@@ -75,7 +77,9 @@ nonisolated struct SpectrumAnalyzerConfig: Sendable, Equatable {
     let dbFloor: Float         // -40 to -80 — lower = more sensitive
     let attackCoefficient: Float  // 0.3 (smooth) to 1.0 (reactive)
     let showStereo: Bool
-    let themeOption: SpectrumThemeOption
+    let useReassignment: Bool  // time-frequency reassignment for sharper spectrogram
+    let fftSize: SpectrumFFTSize
+    let targetFPS: Double      // publish rate cap: 30 for bars/lines, 60 for spectrogram
 
     static let `default` = SpectrumAnalyzerConfig(
         isEnabled: true,
@@ -83,7 +87,9 @@ nonisolated struct SpectrumAnalyzerConfig: Sendable, Equatable {
         dbFloor: -60,
         attackCoefficient: 0.8,
         showStereo: true,
-        themeOption: .white
+        useReassignment: false,
+        fftSize: .n2048,
+        targetFPS: 30
     )
 }
 
@@ -100,7 +106,7 @@ final class SpectrumAnalyzerSettings {
     @ObservationIgnored private var _sensitivity: Double   // the actual dB floor value (-40 to -80)
     @ObservationIgnored private var _responsiveness: Double  // attack coefficient (0.3 to 1.0)
     @ObservationIgnored private var _showStereo: Bool
-    @ObservationIgnored private var _themeOption: SpectrumThemeOption
+    @ObservationIgnored private var _useReassignment: Bool
 
     // MARK: - Visible properties (manual observation hooks)
 
@@ -174,14 +180,14 @@ final class SpectrumAnalyzerSettings {
         }
     }
 
-    var themeOption: SpectrumThemeOption {
+    var useReassignment: Bool {
         get {
-            access(keyPath: \.themeOption)
-            return _themeOption
+            access(keyPath: \.useReassignment)
+            return _useReassignment
         }
         set {
-            withMutation(keyPath: \.themeOption) { _themeOption = newValue }
-            UserDefaults.standard.set(newValue.rawValue, forKey: Self.themeOptionKey)
+            withMutation(keyPath: \.useReassignment) { _useReassignment = newValue }
+            UserDefaults.standard.set(newValue, forKey: Self.useReassignmentKey)
         }
     }
 
@@ -193,7 +199,7 @@ final class SpectrumAnalyzerSettings {
     static let defaultSensitivity: Double = -60
     static let defaultResponsiveness: Double = 0.8
     static let defaultShowStereo: Bool = true
-    static let defaultThemeOption: SpectrumThemeOption = .white
+    static let defaultUseReassignment: Bool = false
 
     // Sensitivity stores the dB floor value; more negative = more sensitive.
     // Slider goes from minSensitivity (most sensitive) to maxSensitivity (least sensitive).
@@ -202,24 +208,29 @@ final class SpectrumAnalyzerSettings {
     static let minResponsiveness: Double = 0.3
     static let maxResponsiveness: Double = 1.0
 
-    private static let isEnabledKey       = "cassette.spectrum.isEnabled"
-    private static let visualizerTypeKey  = "cassette.spectrum.visualizerType"
-    private static let binDetailKey       = "cassette.spectrum.binDetail"
-    private static let sensitivityKey     = "cassette.spectrum.sensitivity"
-    private static let responsivenessKey  = "cassette.spectrum.responsiveness"
-    private static let showStereoKey      = "cassette.spectrum.showStereo"
-    private static let themeOptionKey     = "cassette.spectrum.themeOption"
+    private static let isEnabledKey        = "cassette.spectrum.isEnabled"
+    private static let visualizerTypeKey   = "cassette.spectrum.visualizerType"
+    private static let binDetailKey        = "cassette.spectrum.binDetail"
+    private static let sensitivityKey      = "cassette.spectrum.sensitivity"
+    private static let responsivenessKey   = "cassette.spectrum.responsiveness"
+    private static let showStereoKey       = "cassette.spectrum.showStereo"
+    private static let useReassignmentKey  = "cassette.spectrum.useReassignment"
 
     // MARK: - Derived
 
     var config: SpectrumAnalyzerConfig {
-        SpectrumAnalyzerConfig(
+        // FFT size is determined by the visualizer: spectrogram benefits from higher
+        // frequency resolution (8192); bar and line views are fine at 2048.
+        let isSpectrogram = _visualizerType == .spectrogram
+        return SpectrumAnalyzerConfig(
             isEnabled: _isEnabled,
             binCount: _binDetail.rawValue,
             dbFloor: Float(_sensitivity),
             attackCoefficient: Float(_responsiveness),
-            showStereo: _showStereo,
-            themeOption: _themeOption
+            showStereo: isSpectrogram || _showStereo,
+            useReassignment: isSpectrogram && _useReassignment,
+            fftSize: isSpectrogram ? .n8192 : .n2048,
+            targetFPS: isSpectrogram ? 60 : 30
         )
     }
 
@@ -258,7 +269,10 @@ final class SpectrumAnalyzerSettings {
             _showStereo = Self.defaultShowStereo
         }
 
-        let themeRaw = UserDefaults.standard.string(forKey: Self.themeOptionKey) ?? ""
-        _themeOption = SpectrumThemeOption(rawValue: themeRaw) ?? Self.defaultThemeOption
+        if UserDefaults.standard.object(forKey: Self.useReassignmentKey) != nil {
+            _useReassignment = UserDefaults.standard.bool(forKey: Self.useReassignmentKey)
+        } else {
+            _useReassignment = Self.defaultUseReassignment
+        }
     }
 }

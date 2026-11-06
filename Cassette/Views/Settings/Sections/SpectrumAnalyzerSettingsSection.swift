@@ -48,27 +48,6 @@ struct SpectrumAnalyzerSettingsSection: View {
 
                 Picker(
                     selection: Binding(
-                        get: { settings?.themeOption ?? .white },
-                        set: { newValue in
-                            settings?.themeOption = newValue
-                            applyConfigChange()
-                        }
-                    )
-                ) {
-                    ForEach(SpectrumThemeOption.allCases) { option in
-                        Text(option.label).tag(option)
-                    }
-                } label: {
-                    Label {
-                        Text("Theme")
-                    } icon: {
-                        SettingsIcon(systemImage: "paintpalette", color: .indigo)
-                    }
-                }
-                .pickerStyle(.menu)
-
-                Picker(
-                    selection: Binding(
                         get: { settings?.binDetail ?? .medium },
                         set: { newValue in
                             settings?.binDetail = newValue
@@ -141,17 +120,40 @@ struct SpectrumAnalyzerSettingsSection: View {
                     )
                 }
 
-                Toggle(isOn: Binding(
-                    get: { settings?.showStereo ?? true },
-                    set: { newValue in
-                        settings?.showStereo = newValue
-                        applyConfigChange()
+                if settings?.visualizerType != .spectrogram {
+                    Toggle(isOn: Binding(
+                        get: { settings?.showStereo ?? true },
+                        set: { newValue in
+                            settings?.showStereo = newValue
+                            applyConfigChange()
+                        }
+                    )) {
+                        Label {
+                            Text("Show stereo channels")
+                        } icon: {
+                            SettingsIcon(systemImage: "speaker.wave.2", color: .indigo)
+                        }
                     }
-                )) {
-                    Label {
-                        Text("Show stereo channels")
-                    } icon: {
-                        SettingsIcon(systemImage: "speaker.wave.2", color: .indigo)
+                }
+
+                if settings?.visualizerType == .spectrogram {
+                    Toggle(isOn: Binding(
+                        get: { settings?.useReassignment ?? false },
+                        set: { newValue in
+                            settings?.useReassignment = newValue
+                            applyConfigChange()
+                        }
+                    )) {
+                        Label {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Enhanced analysis")
+                                Text("Works best with High detail and Reactive responsiveness")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        } icon: {
+                            SettingsIcon(systemImage: "waveform.and.magnifyingglass", color: .indigo)
+                        }
                     }
                 }
             }

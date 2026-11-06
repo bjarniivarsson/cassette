@@ -7,8 +7,8 @@
 import SwiftUI
 
 struct BarsSpectrumAnalyzerView: View {
-    let channels: [[Float]]
-    let theme: SpectrumTheme
+    @Environment(\.appContainer) private var container
+    private var channels: [[Float]] { container?.spectrumAnalyzer.channels ?? [] }
 
     private static let layerOpacity: [(fill: Double, stroke: Double)] = [
         (0.50, 0.90),
@@ -22,7 +22,7 @@ struct BarsSpectrumAnalyzerView: View {
                 let magnitudes = channels[index]
                 let displayCount = magnitudes.count
                 let padded = AnimatableMagnitudes(magnitudes)
-                let color = index == 0 ? theme.leftColor : theme.rightColor
+                let color = Color.white
                 ZStack {
                     SpectrumBars(magnitudes: padded, displayCount: displayCount)
                         .fill(color.opacity(opacity.fill))

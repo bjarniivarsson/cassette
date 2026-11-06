@@ -77,13 +77,14 @@ struct FullPlayerExpandedView: View {
                 .ignoresSafeArea()
 
             if isSpectrumVisible {
-                let channels = container?.spectrumAnalyzer.channels ?? []
-                let theme = container?.spectrumAnalyzerSettings.config.themeOption.theme ?? SpectrumThemeOption.white.theme
                 Group {
-                    if container?.spectrumAnalyzerSettings.visualizerType == .bars {
-                        BarsSpectrumAnalyzerView(channels: channels, theme: theme)
-                    } else {
-                        LinesSpectrumAnalyzerView(channels: channels, theme: theme)
+                    switch container?.spectrumAnalyzerSettings.visualizerType ?? .lines {
+                    case .bars:
+                        BarsSpectrumAnalyzerView()
+                    case .spectrogram:
+                        SpectrogramSpectrumAnalyzerView()
+                    case .lines:
+                        LinesSpectrumAnalyzerView()
                     }
                 }
                 .frame(height: 110)
